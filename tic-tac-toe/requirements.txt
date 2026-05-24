@@ -1,0 +1,9 @@
+Questions
+
+1. How many players can play this?
+Let it be dynamic
+
+2. Should the board size be fixed or dynamic
+dynamic
+
+3. 
