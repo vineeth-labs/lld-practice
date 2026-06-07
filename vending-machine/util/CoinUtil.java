@@ -1,10 +1,6 @@
 package util;
 
-import model.CashInventory;
 import model.Coin;
-
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class CoinUtil {

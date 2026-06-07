@@ -26,18 +26,28 @@ public class PaymentState implements VendingMachineState {
             System.out.println("No product selected");
             return;
         }
+        // Add inserted coins to the machine's coin collection
         vendingMachine.addCoinsBeingHeld(coins);
         int amount = CoinUtil.calculateAmount(vendingMachine.getCoinsBeingHeld());
-        if (amount >= currentProduct.getPrice()) {
-            int diff = amount - currentProduct.getPrice();
-            Map<Coin, Integer> coinsToReturn = changeCalculator.convertToChange(vendingMachine.getCashInventory(), diff);
-            if (coinsToReturn != null) {
-                vendingMachine.setState(new DispensingState());
-                vendingMachine.dispenseProduct(coinsToReturn);
-            } else {
-                System.out.println("Not enough change to return, Please insert diff amount");
-            }
+
+        // Check if the inserted amount is sufficient
+        if (amount < currentProduct.getPrice()) {
+            System.out.println("Insufficient funds. Please insert additional coins.");
+            return;
         }
+
+        // Calculate change needed
+        int diff = amount - currentProduct.getPrice();
+        Map<Coin, Integer> coinsToReturn = changeCalculator.convertToChange(vendingMachine.getCashInventory(), diff);
+        
+        if (coinsToReturn == null) {
+            System.out.println("Not enough change to return. Please insert additional coins.");
+            return;
+        }
+
+        // Set the state to DispensingState and proceed with dispensing
+        vendingMachine.setState(new DispensingState());
+        vendingMachine.dispenseProduct(coinsToReturn);
     }
 
     @Override

@@ -13,6 +13,17 @@ public class Inventory {
         this.items = items == null ? new java.util.HashMap<>() : items;
     }
 
+    public Map<Integer, Product> getItems() {
+        return items;
+    }
+
+    public void putProduct(int productId, Product product) {
+        if (this.items == null) {
+            this.items = new java.util.HashMap<>();
+        }
+        this.items.put(productId, product);
+    }
+
     public Product getProduct(int productId) {
         return items == null ? null : items.get(productId);
     }
