@@ -1,7 +1,7 @@
 package model;
 
 public enum TransactionStatus {
-    PASSED,
-    PENDING,
+    COMPLETED,
+    CANCELLED,
     FAILED
 }

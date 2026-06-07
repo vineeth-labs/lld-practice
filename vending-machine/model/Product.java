@@ -5,7 +5,7 @@ public class Product {
     Integer id;
     Integer price;
     Integer quantity;
-    public Product(String name, int id, double price) {
+    public Product(String name, int id, int price) {
         this.name = name;
         this.id = id;
         this.price = price;
@@ -22,5 +22,25 @@ public class Product {
 
     public Integer getPrice() {
         return price;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public void setPrice(Integer price) {
+        this.price = price;
     }
 }

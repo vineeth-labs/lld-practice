@@ -1,13 +1,16 @@
 package state;
 
-import model.Product;
+import model.Coin;
+import model.VendingMachine;
+
+import java.util.Map;
 
 public interface VendingMachineState {
-    void selectProduct(Product product);
+    void selectProduct(VendingMachine vendingMachine, Integer productId);
 
-    void insertMoney(Integer money);
+    void insertMoney(VendingMachine vendingMachine, Map<Coin, Integer> coins);
 
-    void dispenseProduct();
+    void dispenseProduct(VendingMachine vendingMachine, Map<Coin, Integer> coinsToAdd, Map<Coin, Integer> coinsToReturn);
 
-    void cancelTransaction();
+    void cancelTransaction(VendingMachine vendingMachine);
 }
