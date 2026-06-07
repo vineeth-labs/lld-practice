@@ -7,8 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 class DispensingState implements VendingMachineState {
-
-    private DispensingState dispensingState;
+    
 
     @Override
     public void selectProduct(VendingMachine vendingMachine, Integer productId) {
@@ -31,9 +30,7 @@ class DispensingState implements VendingMachineState {
         vendingMachine.setCoinsBeingHeld(new HashMap<>());
 
         vendingMachine.getCashInventory().decreaseCoins(coinsToReturn);
-        vendingMachine.getTransactions().add(
-                new Transaction(0, currentProduct.getId(), TransactionStatus.COMPLETED, currentProduct.getPrice(), LocalDateTime.now())
-        );
+        vendingMachine.addTransaction(new Transaction(0, currentProduct.getId(), TransactionStatus.COMPLETED, currentProduct.getPrice(), LocalDateTime.now()));
         vendingMachine.resetState();
     }
 

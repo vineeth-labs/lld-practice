@@ -3,10 +3,18 @@ package model;
 import java.util.Map;
 
 public class Inventory {
-    Map<Integer, Product> items;
+    private Map<Integer, Product> items;
+
+    public Inventory() {
+        this.items = new java.util.HashMap<>();
+    }
+
+    public Inventory(Map<Integer, Product> items) {
+        this.items = items == null ? new java.util.HashMap<>() : items;
+    }
 
     public Product getProduct(int productId) {
-        return items.get(productId);
+        return items == null ? null : items.get(productId);
     }
 
     public void decreaseProduct(int productId) {

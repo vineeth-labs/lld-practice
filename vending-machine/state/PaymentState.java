@@ -22,8 +22,12 @@ public class PaymentState implements VendingMachineState {
     @Override
     public void insertMoney(VendingMachine vendingMachine, Map<Coin, Integer> coins) {
         Product currentProduct = vendingMachine.getCurrentProduct();
+        if (currentProduct == null) {
+            System.out.println("No product selected");
+            return;
+        }
         vendingMachine.addCoinsBeingHeld(coins);
-        int amount = CoinUtil.calculateAmount(coins);
+        int amount = CoinUtil.calculateAmount(vendingMachine.getCoinsBeingHeld());
         if (amount >= currentProduct.getPrice()) {
             int diff = amount - currentProduct.getPrice();
             Map<Coin, Integer> coinsToReturn = changeCalculator.convertToChange(vendingMachine.getCashInventory(), diff);
@@ -43,11 +47,12 @@ public class PaymentState implements VendingMachineState {
 
     @Override
     public void cancelTransaction(VendingMachine vendingMachine) {
-        if (vendingMachine.getCoinsBeingHeld() != null && CoinUtil.calculateAmount(vendingMachine.getCoinsBeingHeld()) > 0) {
-            vendingMachine.getTransactions().add(
-                    new Transaction(0, vendingMachine.getCurrentProduct().getId(), TransactionStatus.CANCELLED,
-                            CoinUtil.calculateAmount(vendingMachine.getCoinsBeingHeld()),LocalDateTime.now()));
-            System.out.println("Returning coins (Total amount): " + CoinUtil.calculateAmount(vendingMachine.getCoinsBeingHeld()));
+        int amount = CoinUtil.calculateAmount(vendingMachine.getCoinsBeingHeld());
+        if (amount > 0) {
+            Transaction tx = new Transaction(0, vendingMachine.getCurrentProduct() == null ? 0 : vendingMachine.getCurrentProduct().getId(), TransactionStatus.CANCELLED,
+                    amount, LocalDateTime.now());
+            vendingMachine.addTransaction(tx);
+            System.out.println("Returning coins (Total amount): " + amount);
         }
         System.out.println("Cancelling transaction");
         vendingMachine.resetState();

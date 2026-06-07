@@ -34,7 +34,8 @@ public class IdleState implements VendingMachineState {
         if (vendingMachine.getCurrentProduct() != null) {
             System.out.println("Cancelling transaction");
             vendingMachine.resetState();
+        } else {
+            System.out.println("Invalid operation");
         }
-        System.out.println("Invalid operation");
     }
 }

@@ -24,7 +24,9 @@ public class GreedyChangeCalculator implements ChangeCalculator {
                 int coinsNeeded = amount / denominationValue;
                 int coinsCounted = Math.min(coinsNeeded, count);
                 amount -= coinsCounted * denominationValue;
-                coinsToProvide.put(entry.getKey(), coinsCounted);
+                if (coinsCounted > 0) {
+                    coinsToProvide.put(entry.getKey(), coinsCounted);
+                }
             }
         }
         if (amount == 0) {

@@ -9,16 +9,23 @@ import java.util.List;
 import java.util.Map;
 
 public class VendingMachine {
-    Inventory inventory;
-    VendingMachineState state;
-    CashInventory cashInventory;
-    List<Transaction> transactions;
-    Product currentProduct;
-    Map<Coin, Integer> coinsBeingHeld;
+    private Inventory inventory;
+    private VendingMachineState state;
+    private CashInventory cashInventory;
+    private List<Transaction> transactions;
+    private Product currentProduct;
+    private Map<Coin, Integer> coinsBeingHeld;
 
-    VendingMachine(Inventory inventory) {
+    public VendingMachine(Inventory inventory) {
+        this(inventory, new CashInventory());
+    }
+
+    public VendingMachine(Inventory inventory, CashInventory cashInventory) {
         this.inventory = inventory;
-        state = new IdleState();
+        this.cashInventory = cashInventory == null ? new CashInventory() : cashInventory;
+        this.state = new IdleState();
+        this.transactions = new java.util.ArrayList<>();
+        this.coinsBeingHeld = new java.util.HashMap<>();
     }
 
     public void selectProduct(int productId) {
@@ -49,9 +56,10 @@ public class VendingMachine {
         return cashInventory;
     }
 
-    public List<Transaction> getTransactions() {
-        return transactions;
+    public void setCashInventory(CashInventory cashInventory) {
+        this.cashInventory = cashInventory;
     }
+
 
     public Product getCurrentProduct() {
         return currentProduct;
@@ -70,9 +78,15 @@ public class VendingMachine {
     }
 
     public void addCoinsBeingHeld(Map<Coin, Integer> coinsToAdd) {
+        if (coinsToAdd == null) {
+            return;
+        }
+        if (this.coinsBeingHeld == null) {
+            this.coinsBeingHeld = new java.util.HashMap<>();
+        }
         coinsToAdd.forEach((coin, count) -> {
-            int quantity = this.coinsBeingHeld.get(coin);
-            quantity += count;
+            int quantity = this.coinsBeingHeld.getOrDefault(coin, 0);
+            quantity += (count == null ? 0 : count);
             this.coinsBeingHeld.put(coin, quantity);
         });
     }
@@ -83,8 +97,19 @@ public class VendingMachine {
         coinsBeingHeld = new HashMap<Coin, Integer>();
     }
 
-    public void putMachineUnderOutOfService(VendingMachine vendingMachine) {
+    public void putMachineUnderOutOfService() {
         state = new OutOfServiceState();
+    }
+
+    public List<Transaction> getTransactions() {
+        return transactions;
+    }
+
+    public void addTransaction(Transaction tx) {
+        if (this.transactions == null) {
+            this.transactions = new java.util.ArrayList<>();
+        }
+        this.transactions.add(tx);
     }
 
 }

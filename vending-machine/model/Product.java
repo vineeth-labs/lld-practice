@@ -1,10 +1,10 @@
 package model;
 
 public class Product {
-    String name;
-    Integer id;
-    Integer price;
-    Integer quantity;
+    private String name;
+    private Integer id;
+    private Integer price;
+    private Integer quantity;
     public Product(String name, int id, int price) {
         this.name = name;
         this.id = id;
