@@ -32,4 +32,8 @@ public class BookCatalog {
             .orElse(Collections.emptyList());
     }
 
+    public Map<String, Book> getBooks() {
+        return Collections.unmodifiableMap(books);
+    }
+
 }

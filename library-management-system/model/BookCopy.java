@@ -3,14 +3,16 @@ package model;
 public class BookCopy {
     private Book book;
     private String copyId;
-    private boolean isAvailable;
     private BookStatus status;
 
     public BookCopy(Book book, String copyId) {
+        this(book, copyId, BookStatus.AVAILABLE);
+    }
+
+    public BookCopy(Book book, String copyId, BookStatus status) {
         this.book = book;
         this.copyId = copyId;
-        this.isAvailable = true; // By default, a new copy is available
-        this.status = BookStatus.AVAILABLE;
+        this.status = status;
     }
 
     public Book getBook() {
@@ -22,12 +24,9 @@ public class BookCopy {
     }
 
     public boolean isAvailable() {
-        return isAvailable;
+        return status.isAvailable();
     }
 
-    public void setAvailable(boolean available) {
-        isAvailable = available;
-    }
 
     public BookStatus getStatus() {
         return status;
