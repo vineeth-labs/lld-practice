@@ -3,6 +3,7 @@ import model.WindowInfo;
 import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class FixedWindowRateLimiter implements RateLimiter {
     private static final long DEFAULT_WINDOW_SIZE = 60L;
@@ -17,29 +18,29 @@ public class FixedWindowRateLimiter implements RateLimiter {
     public boolean allowRequest(String userId) {
         Instant timeStamp = Instant.now();
         long windowId = computeWindowId(timeStamp);
+        AtomicBoolean allowed = new AtomicBoolean(false);
 
-        WindowInfo windowInfo = userWindowInfo.get(userId);
-        if (windowInfo == null) {
-            // no entry yet - create one with single request
-            WindowInfo created = new WindowInfo(windowId, 1);
-            userWindowInfo.put(userId, created);
-            return true;
-        }
+        userWindowInfo.compute(userId, (k, existing) -> {
+            if (existing == null || existing.getWindowId() != windowId) {
+                // no entry yet or window rolled over - create new window with one request
+                allowed.set(true);
+                return new WindowInfo(windowId, 1);
+            }
 
-        long existingWindowId = windowInfo.getWindowId();
-        if (existingWindowId != windowId) {
-            // window rolled over - reset counter for this user
-            userWindowInfo.put(userId, new WindowInfo(windowId, 1));
-            return true;
-        }
+            int current = existing.getRequestCount();
+            if (current >= REQUEST_LIMIT) {
+                // reached limit - keep existing
+                allowed.set(false);
+                return existing;
+            }
 
-        int requestCount = windowInfo.getRequestCount();
-        if (requestCount >= REQUEST_LIMIT) {
-            return false;
-        }
+            // increment and allow
+            existing.incrementRequestCount();
+            allowed.set(true);
+            return existing;
+        });
 
-        windowInfo.incrementRequestCount();
-        return true;
+        return allowed.get();
     }
 
     private long computeWindowId(Instant timestamp) {
