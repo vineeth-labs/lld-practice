@@ -21,7 +21,7 @@ public class ElevatorController {
 
     public void handleInternalRequest(String elevatorId, InternalRequest internalRequest) {
         Elevator elevator = elevators.get(elevatorId);
-        elevator.assignRequest(internalRequest);
+        elevator.assignInternalRequest(internalRequest);
     }
 
     public void handleExternalRequest(ExternalRequest externalRequest) {
@@ -35,7 +35,7 @@ public class ElevatorController {
             // if not: pick any elevator below it (moving up ones greater than moving down ones)
         Elevator optimalElevator = assigner.assign(elevators.values().stream().toList(), externalRequest);
         if (optimalElevator != null) {
-            optimalElevator.assignRequest(externalRequest);
+            optimalElevator.assignExternalRequest(externalRequest);
         } else {
             System.out.println("No available elevator found");
         }
