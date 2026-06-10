@@ -13,7 +13,7 @@ public class NearestElevatorAssigner implements ElevatorAssigner {
         for (Elevator elevator : elevators) {
             int cost = estimateCost(elevator, request);
             if (cost < minCost) {
-                minCost = estimateCost(elevator, request);
+                minCost = cost;
                 optimalElevator = elevator;
             }
         }

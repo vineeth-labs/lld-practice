@@ -4,68 +4,78 @@ import java.util.NavigableSet;
 import java.util.TreeSet;
 
 public class Elevator {
-    String id;
-    NavigableSet<Integer> upRequests;
-    NavigableSet<Integer> downRequests;
-    int currentFloor;
-    ElevatorDirection direction;
-    ElevatorState state;
+    private String id;
+    private final NavigableSet<Integer> upRequests;
+    private final NavigableSet<Integer> downRequests;
+    private final NavigableSet<Integer> cabinRequests;
+    private int currentFloor;
+    private ElevatorDirection direction;
+    private ElevatorState state;
 
     public Elevator(String id) {
         this.id = id;
-        upRequests = new TreeSet<>();
-        downRequests = new TreeSet<>();
+        this.upRequests = new TreeSet<>();
+        this.downRequests = new TreeSet<>();
+        this.cabinRequests = new TreeSet<>();
+        this.currentFloor = 0;
+        this.direction = null;
+        this.state = ElevatorState.IDLE;
     }
+
+    public String getId() { return id; }
 
     public int getCurrentFloor() {
         return currentFloor;
     }
 
-    public void assignRequest(Request request){
-        if (request instanceof InternalRequest) {
-            int destination = request.getFloorNumber();
-            if (destination > currentFloor) {
-                upRequests.add(destination);
-            } else if (destination < currentFloor) {
-                downRequests.add(destination);
-            } else {
-                // do nothing
-            }
-        } else {
-            Direction direction = ((ExternalRequest) request).getDirection();
-            int from = request.getFloorNumber();
-            if (state == ElevatorState.IDLE) {
-                if (from > currentFloor) {
-                    upRequests.add(from);
-                } else if (from < currentFloor) {
-                    downRequests.add(from);
-                } else {
-                    // do nothing
-                }
-            } else {
-                if (direction == Direction.UP) {
-                    upRequests.add(from);
-                }  else if (direction == Direction.DOWN) {
-                    downRequests.add(from);
-                }
-            }
+    public void assignInternalRequest(InternalRequest internalRequest) {
+        cabinRequests.add(internalRequest.getFloorNumber());
+    }
+
+    public void assignExternalRequest(ExternalRequest externalRequest) {
+        addExternalRequest(externalRequest);
+    }
+
+    private void addInternalRequest(int destination) {
+        if (destination > currentFloor) {
+            addToUp(destination);
+        } else if (destination < currentFloor) {
+            addToDown(destination);
         }
     }
 
-    public void pickNextFloor() {
-        Integer nextFloor = null;
-        if (state == ElevatorState.IDLE || direction == ElevatorDirection.UP) {
-            nextFloor = pickFromUpRequests();
-            if (nextFloor == null) {
-                nextFloor = pickFromDownRequests();
-            }
-        } else if (direction == ElevatorDirection.DOWN) {
-            nextFloor = pickFromDownRequests();
-            if (nextFloor  == null) {
-                nextFloor = pickFromUpRequests();
-            }
+    private void addExternalRequest(ExternalRequest request) {
+        int from = request.getFloorNumber();
+        Direction reqDir = request.getDirection();
+
+        if (state == ElevatorState.IDLE) {
+            // when idle, decide based on source position
+            if (from > currentFloor) addToUp(from);
+            else if (from < currentFloor) addToDown(from);
+            return;
         }
+
+        // if moving, try to honor request direction
+        if (reqDir == Direction.UP) addToUp(from);
+        else addToDown(from);
+    }
+
+    private void addToUp(int floor) { upRequests.add(floor); }
+    private void addToDown(int floor) { downRequests.add(floor); }
+
+    public void pickNextFloor() {
+        Integer nextFloor = pickNextFromQueues();
         moveTo(nextFloor);
+    }
+
+    private Integer pickNextFromQueues() {
+        if (state == ElevatorState.IDLE || direction == null || direction == ElevatorDirection.UP) {
+            Integer next = pickFromUpRequests();
+            return next != null ? next : pickFromDownRequests();
+        }
+        // direction == DOWN
+        Integer next = pickFromDownRequests();
+        return next != null ? next : pickFromUpRequests();
     }
 
     private Integer pickFromUpRequests() {

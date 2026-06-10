@@ -3,6 +3,7 @@ import model.ExternalRequest;
 import model.InternalRequest;
 import strategy.ElevatorAssigner;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -11,7 +12,11 @@ public class ElevatorController {
     ElevatorAssigner assigner;
 
     public ElevatorController(List<Elevator> elevators, ElevatorAssigner assigner) {
-
+        this.elevators = new HashMap<>();
+        for (Elevator e : elevators) {
+            this.elevators.put(e.getId(), e);
+        }
+        this.assigner = assigner;
     }
 
     public void handleInternalRequest(String elevatorId, InternalRequest internalRequest) {
