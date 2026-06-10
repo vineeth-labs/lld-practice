@@ -5,6 +5,19 @@ import model.ExternalRequest;
 
 import java.util.List;
 
-public interface ElevatorAssigner {
-    public Elevator assign(List<Elevator> elevators, ExternalRequest request);
+abstract public class ElevatorAssigner {
+    public Elevator assign(List<Elevator> elevators, ExternalRequest request) {
+        Elevator optimalElevator = null;
+        int minCost = Integer.MAX_VALUE;
+        for (Elevator elevator : elevators) {
+            int cost = estimateCost(elevator, request);
+            if (cost < minCost) {
+                minCost = cost;
+                optimalElevator = elevator;
+            }
+        }
+        return optimalElevator;
+    }
+
+    abstract protected int estimateCost(Elevator elevator, ExternalRequest request);
 }

@@ -5,7 +5,7 @@ import model.ExternalRequest;
 
 import java.util.List;
 
-public class NearestElevatorAssigner implements ElevatorAssigner {
+public class NearestElevatorAssigner extends ElevatorAssigner {
     @Override
     public Elevator assign(List<Elevator> elevators, ExternalRequest request) {
         Elevator optimalElevator = null;
@@ -20,7 +20,8 @@ public class NearestElevatorAssigner implements ElevatorAssigner {
         return optimalElevator;
     }
 
-    private int estimateCost(Elevator elevator, ExternalRequest externalRequest) {
+    @Override
+    protected int estimateCost(Elevator elevator, ExternalRequest externalRequest) {
         int floor =  externalRequest.getFloorNumber();
         int currentFloor = elevator.getCurrentFloor();
         return Math.abs(floor - currentFloor);

@@ -25,14 +25,6 @@ public class ElevatorController {
     }
 
     public void handleExternalRequest(ExternalRequest externalRequest) {
-        // if request direction is UP
-            // pick the nearest moving UP/IDLE elevator  below it  (ideal)
-            // if not: pick the nearest moving DOWN elevator below it
-            // if not: pick any elevator above it and assign (moving down ones greater than moving up ones)
-        // if request direction is DOWN
-            // pick the nearest moving DOWN/IDLE elevator above it (ideal)
-            // if not: pick the nearest moving UP elevator above it
-            // if not: pick any elevator below it (moving up ones greater than moving down ones)
         Elevator optimalElevator = assigner.assign(elevators.values().stream().toList(), externalRequest);
         if (optimalElevator != null) {
             optimalElevator.assignExternalRequest(externalRequest);

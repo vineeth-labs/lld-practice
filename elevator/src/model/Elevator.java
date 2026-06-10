@@ -28,6 +28,14 @@ public class Elevator {
         return currentFloor;
     }
 
+    public ElevatorDirection getDirection() {
+        return direction;
+    }
+
+    public ElevatorState getState() {
+        return state;
+    }
+
     public void assignInternalRequest(InternalRequest internalRequest) {
         cabinRequests.add(internalRequest.getFloorNumber());
     }
@@ -36,17 +44,8 @@ public class Elevator {
         addExternalRequest(externalRequest);
     }
 
-    private void addInternalRequest(int destination) {
-        if (destination > currentFloor) {
-            addToUp(destination);
-        } else if (destination < currentFloor) {
-            addToDown(destination);
-        }
-    }
-
     private void addExternalRequest(ExternalRequest request) {
         int from = request.getFloorNumber();
-        Direction reqDir = request.getDirection();
         if (request.getDirection() == Direction.UP) {
             upPickups.add(from);
         } else {
@@ -56,9 +55,6 @@ public class Elevator {
             state = ElevatorState.MOVING;
         }
     }
-
-    private void addToUp(int floor) { upPickups.add(floor); }
-    private void addToDown(int floor) { downPickups.add(floor); }
 
     public void pickNextFloor() {
         Integer nextFloor = pickNextFromQueues();
