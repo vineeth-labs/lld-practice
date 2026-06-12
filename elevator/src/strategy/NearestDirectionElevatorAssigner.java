@@ -13,7 +13,7 @@ public class NearestDirectionElevatorAssigner extends ElevatorAssigner {
 
         ElevatorState elevatorDir = elevator.getState();
 
-        if (elevatorDir == ElevatorState.IDLE) {
+        if (elevatorDir.isIdle()) {
             return distance;
         }
 
@@ -31,15 +31,14 @@ public class NearestDirectionElevatorAssigner extends ElevatorAssigner {
     private boolean isOnTheWay(ElevatorState state,
                                int currentFloor,
                                int targetFloor) {
-        return state == ElevatorState.MOVING_UP
+        return state.getDirection() == Direction.UP
                 ? targetFloor >= currentFloor
                 : targetFloor <= currentFloor;
     }
 
     private boolean isSameDirection(ElevatorState state,
                                     Direction requestDir) {
-        return (state == ElevatorState.MOVING_UP && requestDir == Direction.UP)
-                || (state == ElevatorState.MOVING_DOWN && requestDir == Direction.DOWN);
+        return state.getDirection() == requestDir;
     }
 
 }

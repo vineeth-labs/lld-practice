@@ -24,7 +24,7 @@ public class Elevator implements Runnable {
         this.upPickups = new TreeSet<>();
         this.downPickups = new TreeSet<>();
         this.currentFloor = 0;
-        this.state = ElevatorState.IDLE;
+        this.state = new IdleState();
         this.schedulingStrategy = schedulingStrategy;
     }
 
@@ -40,7 +40,7 @@ public class Elevator implements Runnable {
 
     public synchronized void run() {
         while (true) {
-            while (state == ElevatorState.IDLE && hasNoRequests()) {
+            while (state.isIdle() && hasNoRequests()) {
                 if (shutdownRequested) {
                     return;
                 }
@@ -98,17 +98,17 @@ public class Elevator implements Runnable {
 
     private void moveTo(Integer nextFloor) {
         if (nextFloor == null) {
-            state = ElevatorState.IDLE;
+            state = new IdleState();
             return;
         }
 
         if (nextFloor == currentFloor) {
-            serveCurrentFloor();
-            updateStateAfterServing();
+            state.serveFloor(upPickups, downPickups, currentFloor);
+            state = state.afterServing(hasNoRequests());
             return;
         }
 
-        state = nextFloor > currentFloor ? ElevatorState.MOVING_UP : ElevatorState.MOVING_DOWN;
+        state = nextFloor > currentFloor ? new MovingUpState() : new MovingDownState();
 
         System.out.println("[" + id + "] Moving from floor " + currentFloor + " to floor " + nextFloor);
         try {
@@ -122,39 +122,8 @@ public class Elevator implements Runnable {
         }
 
         currentFloor = nextFloor;
-        serveCurrentFloor();
-        updateStateAfterServing();
+        state.serveFloor(upPickups, downPickups, currentFloor);
+        state = state.afterServing(hasNoRequests());
         System.out.println("[" + id + "] Arrived at floor " + currentFloor);
-    }
-
-    private void serveCurrentFloor() {
-        // The same floor can exist in both upPickups and downPickups simultaneously.
-        // When arriving going UP, clear only upPickups (leave downPickups for a later trip)
-        // unless repositioning (no upPickup here), in which case clear downPickups instead.
-        if (state == ElevatorState.MOVING_UP) {
-            if (upPickups.contains(currentFloor)) {
-                upPickups.remove(currentFloor);
-            } else {
-                // Repositioning: traveled UP to reach a downPickup
-                downPickups.remove(currentFloor);
-            }
-        } else if (state == ElevatorState.MOVING_DOWN) {
-            if (downPickups.contains(currentFloor)) {
-                downPickups.remove(currentFloor);
-            } else {
-                // Repositioning: traveled DOWN to reach an upPickup
-                upPickups.remove(currentFloor);
-            }
-        } else {
-            // Already at this floor: opening the doors serves requests in either direction.
-            upPickups.remove(currentFloor);
-            downPickups.remove(currentFloor);
-        }
-    }
-
-    private void updateStateAfterServing() {
-        if (hasNoRequests()) {
-            state = ElevatorState.IDLE;
-        }
     }
 }

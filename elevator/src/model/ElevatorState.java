@@ -1,7 +1,10 @@
 package model;
 
-public enum ElevatorState {
-    MOVING_UP,
-    MOVING_DOWN,
-    IDLE
+import java.util.NavigableSet;
+
+public interface ElevatorState {
+    boolean isIdle();
+    Direction getDirection();
+    void serveFloor(NavigableSet<Integer> upPickups, NavigableSet<Integer> downPickups, int currentFloor);
+    ElevatorState afterServing(boolean hasNoRequests);
 }

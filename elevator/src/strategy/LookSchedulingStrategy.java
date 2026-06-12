@@ -1,5 +1,6 @@
 package strategy;
 
+import model.Direction;
 import model.ElevatorState;
 
 import java.util.NavigableSet;
@@ -10,7 +11,7 @@ public class LookSchedulingStrategy implements ElevatorSchedulingStrategy {
     public Integer pickNext(int currentFloor, ElevatorState state,
                             NavigableSet<Integer> upPickups,
                             NavigableSet<Integer> downPickups) {
-        if (state == ElevatorState.MOVING_UP) {
+        if (state.getDirection() == Direction.UP) {
             Integer next = upPickups.ceiling(currentFloor);
             if (next != null) return next;
             return highest(
@@ -18,7 +19,7 @@ public class LookSchedulingStrategy implements ElevatorSchedulingStrategy {
                     downPickups.floor(currentFloor));
         }
 
-        if (state == ElevatorState.MOVING_DOWN) {
+        if (state.getDirection() == Direction.DOWN) {
             Integer next = downPickups.floor(currentFloor);
             if (next != null) return next;
             return lowest(
