@@ -3,27 +3,20 @@ package strategy;
 import model.Elevator;
 import model.ExternalRequest;
 
+import java.util.Comparator;
 import java.util.List;
 
 public class NearestElevatorAssigner extends ElevatorAssigner {
+
     @Override
     public Elevator assign(List<Elevator> elevators, ExternalRequest request) {
-        Elevator optimalElevator = null;
-        int minCost = Integer.MAX_VALUE;
-        for (Elevator elevator : elevators) {
-            int cost = estimateCost(elevator, request);
-            if (cost < minCost) {
-                minCost = cost;
-                optimalElevator = elevator;
-            }
-        }
-        return optimalElevator;
+        return elevators.stream()
+                .min(Comparator.comparingInt(e -> estimateCost(e, request)))
+                .orElseThrow(() -> new IllegalArgumentException("No elevators available"));
     }
 
     @Override
-    protected int estimateCost(Elevator elevator, ExternalRequest externalRequest) {
-        int floor =  externalRequest.getFloorNumber();
-        int currentFloor = elevator.getCurrentFloor();
-        return Math.abs(floor - currentFloor);
+    protected int estimateCost(Elevator elevator, ExternalRequest request) {
+        return Math.abs(request.getFloorNumber() - elevator.getCurrentFloor());
     }
 }
