@@ -6,11 +6,14 @@ import java.util.Collections;
 import java.util.NavigableSet;
 import java.util.TreeSet;
 
-public class Elevator {
+public class Elevator implements Runnable {
     private String id;
+
+    // upPickups: floors where someone wants to go UP (external button or internal request above current floor)
+    // downPickups: floors where someone wants to go DOWN (external button or internal request below current floor)
     private final NavigableSet<Integer> upPickups;
     private final NavigableSet<Integer> downPickups;
-    private final NavigableSet<Integer> cabinRequests;
+
     private int currentFloor;
     private ElevatorDirection direction;
     private ElevatorState state;
@@ -20,7 +23,6 @@ public class Elevator {
         this.id = id;
         this.upPickups = new TreeSet<>();
         this.downPickups = new TreeSet<>();
-        this.cabinRequests = new TreeSet<>();
         this.currentFloor = 0;
         this.direction = null;
         this.state = ElevatorState.IDLE;
@@ -41,12 +43,37 @@ public class Elevator {
         return state;
     }
 
-    public void assignInternalRequest(InternalRequest internalRequest) {
-        cabinRequests.add(internalRequest.getFloorNumber());
+    public synchronized void run() {
+        while (true) {
+            while (state == ElevatorState.IDLE && hasNoRequests()) {
+                try {
+                    wait();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+            pickNextFloor();
+        }
     }
 
-    public void assignExternalRequest(ExternalRequest externalRequest) {
+    private boolean hasNoRequests() {
+        return upPickups.isEmpty() && downPickups.isEmpty();
+    }
+
+    public synchronized void assignInternalRequest(InternalRequest internalRequest) {
+        int floor = internalRequest.getFloorNumber();
+        if (floor > currentFloor) {
+            upPickups.add(floor);
+        } else if (floor < currentFloor) {
+            downPickups.add(floor);
+        }
+        notifyAll();
+    }
+
+    public synchronized void assignExternalRequest(ExternalRequest externalRequest) {
         addExternalRequest(externalRequest);
+        notifyAll();
     }
 
     private void addExternalRequest(ExternalRequest request) {
@@ -61,12 +88,11 @@ public class Elevator {
         }
     }
 
-    public void pickNextFloor() {
+    public synchronized void pickNextFloor() {
         Integer nextFloor = schedulingStrategy.pickNext(
                 currentFloor, direction,
                 Collections.unmodifiableNavigableSet(upPickups),
-                Collections.unmodifiableNavigableSet(downPickups),
-                Collections.unmodifiableNavigableSet(cabinRequests));
+                Collections.unmodifiableNavigableSet(downPickups));
         moveTo(nextFloor);
     }
 
@@ -80,23 +106,40 @@ public class Elevator {
         state = ElevatorState.MOVING;
         direction = nextFloor > currentFloor ? ElevatorDirection.UP : ElevatorDirection.DOWN;
 
-        System.out.println("Moving from " + currentFloor + " to " + nextFloor);
+        System.out.println("[" + id + "] Moving from floor " + currentFloor + " to floor " + nextFloor);
         try {
-            Thread.sleep(1000);
+            long deadline = System.currentTimeMillis() + 1000;
+            long remaining;
+            while ((remaining = deadline - System.currentTimeMillis()) > 0) {
+                wait(remaining);
+            }
         } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            Thread.currentThread().interrupt();
         }
 
         currentFloor = nextFloor;
         serveCurrentFloor();
+        System.out.println("[" + id + "] Arrived at floor " + currentFloor);
     }
 
     private void serveCurrentFloor() {
-        cabinRequests.remove(currentFloor);
-
-        if (direction == ElevatorDirection.UP)
-            upPickups.remove(currentFloor);
-        else if (direction == ElevatorDirection.DOWN)
-            downPickups.remove(currentFloor);
+        // The same floor can exist in both upPickups and downPickups simultaneously.
+        // When arriving going UP, clear only upPickups (leave downPickups for a later trip)
+        // unless repositioning (no upPickup here), in which case clear downPickups instead.
+        if (direction == ElevatorDirection.UP) {
+            if (upPickups.contains(currentFloor)) {
+                upPickups.remove(currentFloor);
+            } else {
+                // Repositioning: traveled UP to reach a downPickup
+                downPickups.remove(currentFloor);
+            }
+        } else if (direction == ElevatorDirection.DOWN) {
+            if (downPickups.contains(currentFloor)) {
+                downPickups.remove(currentFloor);
+            } else {
+                // Repositioning: traveled DOWN to reach an upPickup
+                upPickups.remove(currentFloor);
+            }
+        }
     }
 }

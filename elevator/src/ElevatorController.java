@@ -15,6 +15,9 @@ public class ElevatorController {
         this.elevators = new HashMap<>();
         for (Elevator e : elevators) {
             this.elevators.put(e.getId(), e);
+            Thread t = new Thread(e, "elevator-" + e.getId());
+            t.setDaemon(true);
+            t.start();
         }
         this.assigner = assigner;
     }
