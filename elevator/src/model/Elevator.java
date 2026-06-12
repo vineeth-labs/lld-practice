@@ -15,7 +15,7 @@ public class Elevator implements Runnable {
     private final NavigableSet<Integer> downPickups;
 
     private int currentFloor;
-    private ElevatorDirection direction;
+    private ElevatorState state;
     private boolean shutdownRequested;
     private final ElevatorSchedulingStrategy schedulingStrategy;
 
@@ -24,7 +24,7 @@ public class Elevator implements Runnable {
         this.upPickups = new TreeSet<>();
         this.downPickups = new TreeSet<>();
         this.currentFloor = 0;
-        this.direction = ElevatorDirection.IDLE;
+        this.state = ElevatorState.IDLE;
         this.schedulingStrategy = schedulingStrategy;
     }
 
@@ -34,13 +34,13 @@ public class Elevator implements Runnable {
         return currentFloor;
     }
 
-    public ElevatorDirection getDirection() {
-        return direction;
+    public ElevatorState getState() {
+        return state;
     }
 
     public synchronized void run() {
         while (true) {
-            while (direction == ElevatorDirection.IDLE && hasNoRequests()) {
+            while (state == ElevatorState.IDLE && hasNoRequests()) {
                 if (shutdownRequested) {
                     return;
                 }
@@ -90,7 +90,7 @@ public class Elevator implements Runnable {
 
     public synchronized void pickNextFloor() {
         Integer nextFloor = schedulingStrategy.pickNext(
-                currentFloor, direction,
+                currentFloor, state,
                 Collections.unmodifiableNavigableSet(upPickups),
                 Collections.unmodifiableNavigableSet(downPickups));
         moveTo(nextFloor);
@@ -98,7 +98,7 @@ public class Elevator implements Runnable {
 
     private void moveTo(Integer nextFloor) {
         if (nextFloor == null) {
-            direction = ElevatorDirection.IDLE;
+            state = ElevatorState.IDLE;
             return;
         }
 
@@ -108,7 +108,7 @@ public class Elevator implements Runnable {
             return;
         }
 
-        direction = nextFloor > currentFloor ? ElevatorDirection.UP : ElevatorDirection.DOWN;
+        state = nextFloor > currentFloor ? ElevatorState.MOVING_UP : ElevatorState.MOVING_DOWN;
 
         System.out.println("[" + id + "] Moving from floor " + currentFloor + " to floor " + nextFloor);
         try {
@@ -131,14 +131,14 @@ public class Elevator implements Runnable {
         // The same floor can exist in both upPickups and downPickups simultaneously.
         // When arriving going UP, clear only upPickups (leave downPickups for a later trip)
         // unless repositioning (no upPickup here), in which case clear downPickups instead.
-        if (direction == ElevatorDirection.UP) {
+        if (state == ElevatorState.MOVING_UP) {
             if (upPickups.contains(currentFloor)) {
                 upPickups.remove(currentFloor);
             } else {
                 // Repositioning: traveled UP to reach a downPickup
                 downPickups.remove(currentFloor);
             }
-        } else if (direction == ElevatorDirection.DOWN) {
+        } else if (state == ElevatorState.MOVING_DOWN) {
             if (downPickups.contains(currentFloor)) {
                 downPickups.remove(currentFloor);
             } else {
@@ -154,7 +154,7 @@ public class Elevator implements Runnable {
 
     private void updateStateAfterServing() {
         if (hasNoRequests()) {
-            direction = ElevatorDirection.IDLE;
+            state = ElevatorState.IDLE;
         }
     }
 }
