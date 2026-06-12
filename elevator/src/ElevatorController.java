@@ -3,6 +3,7 @@ import model.ExternalRequest;
 import model.InternalRequest;
 import strategy.ElevatorAssigner;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -10,13 +11,15 @@ import java.util.Map;
 public class ElevatorController {
     Map<String, Elevator> elevators;
     ElevatorAssigner assigner;
+    private final List<Thread> elevatorThreads;
 
     public ElevatorController(List<Elevator> elevators, ElevatorAssigner assigner) {
         this.elevators = new HashMap<>();
+        this.elevatorThreads = new ArrayList<>();
         for (Elevator e : elevators) {
             this.elevators.put(e.getId(), e);
             Thread t = new Thread(e, "elevator-" + e.getId());
-            t.setDaemon(true);
+            elevatorThreads.add(t);
             t.start();
         }
         this.assigner = assigner;
@@ -36,5 +39,13 @@ public class ElevatorController {
         }
     }
 
+    public void shutdown() {
+        elevators.values().forEach(Elevator::shutdown);
+    }
 
+    public void awaitTermination() throws InterruptedException {
+        for (Thread elevatorThread : elevatorThreads) {
+            elevatorThread.join();
+        }
+    }
 }

@@ -17,6 +17,7 @@ public class Elevator implements Runnable {
     private int currentFloor;
     private ElevatorDirection direction;
     private ElevatorState state;
+    private boolean shutdownRequested;
     private final ElevatorSchedulingStrategy schedulingStrategy;
 
     public Elevator(String id, ElevatorSchedulingStrategy schedulingStrategy) {
@@ -46,6 +47,9 @@ public class Elevator implements Runnable {
     public synchronized void run() {
         while (true) {
             while (state == ElevatorState.IDLE && hasNoRequests()) {
+                if (shutdownRequested) {
+                    return;
+                }
                 try {
                     wait();
                 } catch (InterruptedException e) {
@@ -55,6 +59,11 @@ public class Elevator implements Runnable {
             }
             pickNextFloor();
         }
+    }
+
+    public synchronized void shutdown() {
+        shutdownRequested = true;
+        notifyAll();
     }
 
     private boolean hasNoRequests() {
@@ -97,9 +106,15 @@ public class Elevator implements Runnable {
     }
 
     private void moveTo(Integer nextFloor) {
-        if (nextFloor == null || nextFloor == currentFloor) {
+        if (nextFloor == null) {
             direction = null;
             state = ElevatorState.IDLE;
+            return;
+        }
+
+        if (nextFloor == currentFloor) {
+            serveCurrentFloor();
+            updateStateAfterServing();
             return;
         }
 
@@ -119,6 +134,7 @@ public class Elevator implements Runnable {
 
         currentFloor = nextFloor;
         serveCurrentFloor();
+        updateStateAfterServing();
         System.out.println("[" + id + "] Arrived at floor " + currentFloor);
     }
 
@@ -140,6 +156,19 @@ public class Elevator implements Runnable {
                 // Repositioning: traveled DOWN to reach an upPickup
                 upPickups.remove(currentFloor);
             }
+        } else {
+            // Already at this floor: opening the doors serves requests in either direction.
+            upPickups.remove(currentFloor);
+            downPickups.remove(currentFloor);
+        }
+    }
+
+    private void updateStateAfterServing() {
+        if (hasNoRequests()) {
+            direction = null;
+            state = ElevatorState.IDLE;
+        } else {
+            state = ElevatorState.MOVING;
         }
     }
 }

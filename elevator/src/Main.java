@@ -32,8 +32,9 @@ public class Main {
         Thread.sleep(500);
         controller.handleExternalRequest(new ExternalRequest(2, Direction.DOWN));
 
-        // Keep main thread alive long enough to see both elevators finish
-        Thread.sleep(15000);
+        // Process all queued requests, then stop and wait for every elevator worker.
+        controller.shutdown();
+        controller.awaitTermination();
         System.out.println("Done.");
     }
 }
