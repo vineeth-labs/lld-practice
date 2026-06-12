@@ -8,7 +8,7 @@ import strategy.NearestDirectionElevatorAssigner;
 
 import java.util.List;
 
-public class ElevatorSystem {
+public class Main {
     public static void main(String[] args) throws InterruptedException {
         ElevatorSchedulingStrategy schedulingStrategy = new LookSchedulingStrategy();
         List<Elevator> elevators = List.of(
