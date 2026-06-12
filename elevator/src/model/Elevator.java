@@ -1,5 +1,8 @@
 package model;
 
+import strategy.ElevatorSchedulingStrategy;
+
+import java.util.Collections;
 import java.util.NavigableSet;
 import java.util.TreeSet;
 
@@ -11,8 +14,9 @@ public class Elevator {
     private int currentFloor;
     private ElevatorDirection direction;
     private ElevatorState state;
+    private final ElevatorSchedulingStrategy schedulingStrategy;
 
-    public Elevator(String id) {
+    public Elevator(String id, ElevatorSchedulingStrategy schedulingStrategy) {
         this.id = id;
         this.upPickups = new TreeSet<>();
         this.downPickups = new TreeSet<>();
@@ -20,6 +24,7 @@ public class Elevator {
         this.currentFloor = 0;
         this.direction = null;
         this.state = ElevatorState.IDLE;
+        this.schedulingStrategy = schedulingStrategy;
     }
 
     public String getId() { return id; }
@@ -57,62 +62,12 @@ public class Elevator {
     }
 
     public void pickNextFloor() {
-        Integer nextFloor = pickNextFromQueues();
+        Integer nextFloor = schedulingStrategy.pickNext(
+                currentFloor, direction,
+                Collections.unmodifiableNavigableSet(upPickups),
+                Collections.unmodifiableNavigableSet(downPickups),
+                Collections.unmodifiableNavigableSet(cabinRequests));
         moveTo(nextFloor);
-    }
-
-    private Integer pickNextFromQueues() {
-
-        if (direction == ElevatorDirection.UP || direction == null) {
-            // prefer serving above first
-            Integer next = nextAbove();
-            if (next != null) return next;
-
-            // nothing above, reverse
-            direction = ElevatorDirection.DOWN;
-            Integer nextDown = nextBelow();
-            return nextDown;
-        }
-
-        Integer next = nextBelow();
-        if (next != null) return next;
-
-        // nothing below, reverse
-        direction = ElevatorDirection.UP;
-        Integer nextUp = nextAbove();
-        return nextUp;
-    }
-
-    // nearest floor above (cabin dest or up pickup)
-    private Integer nextAbove() {
-        Integer cabin = cabinRequests.ceiling(currentFloor);
-        Integer pickup = upPickups.ceiling(currentFloor);
-        if (cabin == null) return pickup;
-        if (pickup == null) return cabin;
-        return Math.min(cabin, pickup);
-    }
-
-    // nearest floor below (cabin dest or down pickup)
-    private Integer nextBelow() {
-        Integer cabin  = cabinRequests.floor(currentFloor - 1);
-        Integer pickup = downPickups.floor(currentFloor - 1);
-        if (cabin == null) return pickup;
-        if (pickup == null) return cabin;
-        return Math.max(cabin, pickup); // nearest one wins
-    }
-
-    private Integer pickFromUpRequests() {
-        Integer nextFloor = upPickups.ceiling(currentFloor);
-        if (nextFloor == null) {return null;}
-        upPickups.remove(nextFloor);
-        return nextFloor;
-    }
-
-    private Integer pickFromDownRequests() {
-        Integer nextFloor = downPickups.floor(currentFloor);
-        if (nextFloor == null) {return null;}
-        downPickups.remove(nextFloor);
-        return nextFloor;
     }
 
     private void moveTo(Integer nextFloor) {
