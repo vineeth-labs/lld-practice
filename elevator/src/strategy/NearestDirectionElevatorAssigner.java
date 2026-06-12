@@ -11,11 +11,10 @@ public class NearestDirectionElevatorAssigner extends ElevatorAssigner {
         Direction requestDir = request.getDirection();
         int currentFloor = elevator.getCurrentFloor();
         ElevatorDirection elevatorDir = elevator.getDirection();
-        ElevatorState state = elevator.getState();
         int distance = Math.abs(requestFloor - currentFloor);
 
         // IDLE elevator — always a good candidate, just costs distance
-        if (state == ElevatorState.IDLE) {
+        if (elevatorDir == ElevatorDirection.IDLE) {
             return distance;
         }
 

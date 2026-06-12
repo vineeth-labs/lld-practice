@@ -16,7 +16,6 @@ public class Elevator implements Runnable {
 
     private int currentFloor;
     private ElevatorDirection direction;
-    private ElevatorState state;
     private boolean shutdownRequested;
     private final ElevatorSchedulingStrategy schedulingStrategy;
 
@@ -25,8 +24,7 @@ public class Elevator implements Runnable {
         this.upPickups = new TreeSet<>();
         this.downPickups = new TreeSet<>();
         this.currentFloor = 0;
-        this.direction = null;
-        this.state = ElevatorState.IDLE;
+        this.direction = ElevatorDirection.IDLE;
         this.schedulingStrategy = schedulingStrategy;
     }
 
@@ -40,13 +38,9 @@ public class Elevator implements Runnable {
         return direction;
     }
 
-    public ElevatorState getState() {
-        return state;
-    }
-
     public synchronized void run() {
         while (true) {
-            while (state == ElevatorState.IDLE && hasNoRequests()) {
+            while (direction == ElevatorDirection.IDLE && hasNoRequests()) {
                 if (shutdownRequested) {
                     return;
                 }
@@ -92,9 +86,6 @@ public class Elevator implements Runnable {
         } else {
             downPickups.add(from);
         }
-        if (state == ElevatorState.IDLE) {
-            state = ElevatorState.MOVING;
-        }
     }
 
     public synchronized void pickNextFloor() {
@@ -107,8 +98,7 @@ public class Elevator implements Runnable {
 
     private void moveTo(Integer nextFloor) {
         if (nextFloor == null) {
-            direction = null;
-            state = ElevatorState.IDLE;
+            direction = ElevatorDirection.IDLE;
             return;
         }
 
@@ -118,7 +108,6 @@ public class Elevator implements Runnable {
             return;
         }
 
-        state = ElevatorState.MOVING;
         direction = nextFloor > currentFloor ? ElevatorDirection.UP : ElevatorDirection.DOWN;
 
         System.out.println("[" + id + "] Moving from floor " + currentFloor + " to floor " + nextFloor);
@@ -165,10 +154,7 @@ public class Elevator implements Runnable {
 
     private void updateStateAfterServing() {
         if (hasNoRequests()) {
-            direction = null;
-            state = ElevatorState.IDLE;
-        } else {
-            state = ElevatorState.MOVING;
+            direction = ElevatorDirection.IDLE;
         }
     }
 }
