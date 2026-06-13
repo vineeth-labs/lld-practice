@@ -1,4 +1,5 @@
 import model.Balance;
+import model.Scope;
 import model.Settlement;
 import model.User;
 
@@ -8,7 +9,7 @@ import java.util.Map;
 import java.util.HashMap;
 
 public class SettlementService {
-    // map of (groupId, settlements)
+    // map of (scopeId, settlements)
     private final Map<String, List<Settlement>> settlements = new HashMap<>();
 
     public List<Settlement> getSettlements() {
@@ -21,9 +22,9 @@ public class SettlementService {
         return new ArrayList<>(settlements.getOrDefault(groupId, List.of()));
     }
 
-    public Settlement addSettlement(User paidBy, User paidTo, Double amount, String groupId) {
-        Settlement settlement = new Settlement(paidBy, paidTo, amount);
-        settlements.computeIfAbsent(groupId, ignored -> new ArrayList<>()).add(settlement);
+    public Settlement addSettlement(User paidBy, User paidTo, Double amount, Scope scope) {
+        Settlement settlement = new Settlement(paidBy, paidTo, amount, scope);
+        settlements.computeIfAbsent(scope.id(), ignored -> new ArrayList<>()).add(settlement);
         return settlement;
     }
 

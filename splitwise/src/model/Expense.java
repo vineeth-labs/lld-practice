@@ -7,14 +7,14 @@ public class Expense {
     Double amount;
     SplitType splitType;
     List<Split> splits;
-    Group group;
+    Scope scope;
 
-    public Expense(User paidBy, Double amount, SplitType splitType, List<Split> splits, Group group) {
+    public Expense(User paidBy, Double amount, SplitType splitType, List<Split> splits, Scope scope) {
         this.paidBy = paidBy;
         this.amount = amount;
         this.splitType = splitType;
         this.splits = splits;
-        this.group = group;
+        this.scope = scope;
     }
 
     public User getPaidBy() {
@@ -33,7 +33,7 @@ public class Expense {
         return splits;
     }
 
-    public Group getGroup() {
-        return group;
+    public Scope getScope() {
+        return scope;
     }
 }

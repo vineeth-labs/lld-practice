@@ -1,5 +1,7 @@
 package model;
 
+import java.util.Objects;
+
 public class User {
     Integer id;
     String name;
@@ -21,5 +23,15 @@ public class User {
 
     public String getEmail() {
         return email;
+    }
+
+    @Override
+    public boolean equals(Object object) {
+        return object instanceof User other && Objects.equals(id, other.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(id);
     }
 }

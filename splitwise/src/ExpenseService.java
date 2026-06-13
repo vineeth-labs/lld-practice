@@ -13,7 +13,7 @@ import java.util.Objects;
 
 public class ExpenseService {
 
-    // map of (groupId, expenses)
+    // map of (scopeId, expenses)
     private final Map<String, List<Expense>> expenses = new HashMap<>();
     private final Map<SplitType, SplitStrategy> splitStrategies = new EnumMap<>(SplitType.class);
 
@@ -24,10 +24,10 @@ public class ExpenseService {
     }
 
     public Expense recordExpense(User paidBy, List<User> usersInvolved, Double amount,
-                                 SplitType splitType, Map<User, Double> splitValues, Group group) {
+                                 SplitType splitType, Map<User, Double> splitValues, Scope scope) {
         List<Split> splits = splitStrategies.get(splitType).calculateSplits(usersInvolved, amount, splitValues);
-        Expense expense = new Expense(paidBy, amount, splitType, splits, group);
-        expenses.computeIfAbsent(group.getId(), ignored -> new ArrayList<>()).add(expense);
+        Expense expense = new Expense(paidBy, amount, splitType, splits, scope);
+        expenses.computeIfAbsent(scope.id(), ignored -> new ArrayList<>()).add(expense);
         return expense;
     }
 
