@@ -7,11 +7,6 @@ public class BalanceKey {
     private final Integer secondUserId;
 
     public BalanceKey(User first, User second) {
-        Objects.requireNonNull(first, "first user cannot be null");
-        Objects.requireNonNull(second, "second user cannot be null");
-        Objects.requireNonNull(first.getId(), "first user id cannot be null");
-        Objects.requireNonNull(second.getId(), "second user id cannot be null");
-
         if (first.getId().equals(second.getId())) {
             throw new IllegalArgumentException("balance users must be different");
         }
@@ -30,10 +25,9 @@ public class BalanceKey {
         if (this == object) {
             return true;
         }
-        if (!(object instanceof BalanceKey)) {
+        if (!(object instanceof BalanceKey other)) {
             return false;
         }
-        BalanceKey other = (BalanceKey) object;
         return firstUserId.equals(other.firstUserId)
                 && secondUserId.equals(other.secondUserId);
     }
