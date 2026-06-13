@@ -35,27 +35,14 @@ public class SplitwiseSystem {
     public SplitwiseSystem(UserService userService, ExpenseService expenseService,
                            BalanceService balanceService,
                            SettlementService settlementService) {
-        this.userService = Objects.requireNonNull(userService, "userService cannot be null");
-        this.expenseService =
-                Objects.requireNonNull(expenseService, "expenseService cannot be null");
-        this.balanceService =
-                Objects.requireNonNull(balanceService, "balanceService cannot be null");
-        this.settlementService =
-                Objects.requireNonNull(settlementService, "settlementService cannot be null");
+        this.userService = userService;
+        this.expenseService = expenseService;
+        this.balanceService = balanceService;
+        this.settlementService = settlementService;
         this.groups = new HashMap<>();
     }
 
     public User addUser(Integer id, String name, String email) {
-        if (id == null) {
-            throw new NullPointerException("user id cannot be null");
-        }
-        if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("user name cannot be blank");
-        }
-        if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("user email cannot be blank");
-        }
-
         User user = new User(id, name, email);
         userService.addUser(user);
         return user;
