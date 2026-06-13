@@ -10,4 +10,16 @@ public class Settlement {
         this.paidTo = paidTo;
         this.amount = amount;
     }
+
+    public User getPaidBy() {
+        return paidBy;
+    }
+
+    public User getPaidTo() {
+        return paidTo;
+    }
+
+    public Double getAmount() {
+        return amount;
+    }
 }
