@@ -20,6 +20,7 @@ public class Booking {
         this.showSeats = showSeats;
         this.createdAt = createdAt;
         this.expiresAt = expiresAt;
+        this.bookingStatus = bookingStatus;
     }
 
     public String getId() {
@@ -28,6 +29,26 @@ public class Booking {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public String getShowId() {
+        return showId;
+    }
+
+    public Instant getExpiresAt() {
+        return expiresAt;
+    }
+
+    public BookingStatus getBookingStatus() {
+        return bookingStatus;
+    }
+
+    public void setBookingStatus(BookingStatus bookingStatus) {
+        this.bookingStatus = bookingStatus;
     }
     public List<ShowSeat> getShowSeats() {
         return showSeats;

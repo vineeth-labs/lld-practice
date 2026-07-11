@@ -15,35 +15,39 @@ public class ShowSeat {
     private final AtomicReference<SeatState> status =
         new AtomicReference<>(new SeatState(SeatStatus.AVAILABLE, null, null));
 
-    private volatile String lockedBy;         // userId holding the lock
-    private volatile Instant lockedUntil;
-
-    /** Atomic AVAILABLE -> LOCKED. Returns false if someone beat us. */
+    /** Atomic AVAILABLE (or expired LOCK) -> LOCKED. Returns false if genuinely taken. */
     public boolean tryLock(String userId, Duration ttl, Instant now) {
         while (true) {
-            SeatState curr =  status.get() ;
+            SeatState curr = status.get();
             boolean acquirable = curr.status == SeatStatus.AVAILABLE || curr.isExpired(now);
+            if (!acquirable) return false;
             SeatState next = new SeatState(SeatStatus.LOCKED, userId, now.plus(ttl));
-            if (status.compareAndSet(curr, next)) {
-                return true;
-            }
+            if (status.compareAndSet(curr, next)) return true;
+            // else another thread changed the state; re-read and retry
         }
     }
 
     /** LOCKED -> AVAILABLE. Only the lock holder may release. */
     public boolean release(String userId) {
-        if (!userId.equals(lockedBy)) return false;
-        this.lockedBy = null;
-        this.lockedUntil = null;
-        return status.compareAndSet(SeatStatus.LOCKED, SeatStatus.AVAILABLE);
+        while (true) {
+            SeatState curr = status.get();
+            if (curr.status != SeatStatus.LOCKED || !userId.equals(curr.heldBy)) return false;
+            if (status.compareAndSet(curr, new SeatState(SeatStatus.AVAILABLE, null, null)))
+                return true;
+        }
     }
 
-    /** LOCKED -> BOOKED. Called only on payment success. */
-    boolean confirm(String userId) {
-        if (!userId.equals(lockedBy)) return false;
-        return status.compareAndSet(SeatStatus.LOCKED, SeatStatus.BOOKED);
+    /** LOCKED -> BOOKED. Called only on payment success, by the lock holder. */
+    public boolean confirm(String userId) {
+        while (true) {
+            SeatState curr = status.get();
+            if (curr.status != SeatStatus.LOCKED || !userId.equals(curr.heldBy)) return false;
+            if (status.compareAndSet(curr, new SeatState(SeatStatus.BOOKED, userId, null)))
+                return true;
+        }
     }
 
-    public SeatStatus getStatus() { return status.get(); }
+    public SeatStatus getStatus() { return status.get().status; }
     public String getId()         { return id; }
+    public BigDecimal getPrice()  { return price; }
 }
