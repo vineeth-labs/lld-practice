@@ -1,4 +1,5 @@
 import model.*;
+import model.exception.PaymentFailedException;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -14,6 +15,8 @@ public class Main {
         contentionDemo();
         System.out.println("\n==================================================\n");
         expiryDemo();
+        System.out.println("\n==================================================\n");
+        declineDemo();
     }
 
     /** Builds a show with `numSeats` REGULAR seats (ids ss1..ssN) and registers it. */
@@ -73,13 +76,21 @@ public class Main {
         System.out.println("Confirmed bookings: " + confirmed.get() + " (expected exactly 1)");
     }
 
-    /** A user locks seats but never pays; the sweeper releases the hold. */
+    /** A user locks seats but never pays; the expiry worker releases the hold. */
     private static void expiryDemo() throws InterruptedException {
-        System.out.println("--- Expiry demo: hold seats, never pay, let sweeper reclaim ---");
-        // Short TTL so we don't wait 10 minutes; sweep frequently.
-        BookingService bookingService = new BookingService(new SimulatedPaymentGateway(), Duration.ofSeconds(1));
+        System.out.println("--- Expiry demo: hold seats, never pay, let worker reclaim ---");
+        // Wire the object graph explicitly so the worker shares the service's
+        // lock manager + booking repository. Short TTL so we don't wait 10 minutes.
+        Duration ttl = Duration.ofSeconds(1);
+        SeatLockManager lockManager = new SeatLockManager(ttl);
+        BookingRepository bookingRepo = new InMemoryBookingRepository();
+        ShowRepository showRepo = new InMemoryShowRepository();
+        BookingService bookingService = new BookingService(
+                new SimulatedPaymentGateway(), lockManager, bookingRepo, showRepo, ttl);
+        BookingExpiryWorker worker = new BookingExpiryWorker(bookingRepo, lockManager);
+        worker.start(Duration.ofMillis(500));
+
         Show show = buildShow(bookingService, "show1", 3);
-        bookingService.startSweeper(Duration.ofMillis(500));
 
         Booking abandoned = bookingService.createBooking("lazyUser", "show1", List.of("ss1", "ss2"));
         System.out.println("Created booking " + abandoned.getId().substring(0, 8)
@@ -91,7 +102,7 @@ public class Main {
         Thread.sleep(2000);
 
         System.out.println("Booking status after TTL elapses: " + abandoned.getBookingStatus());
-        System.out.println("Seats after sweeper ran:");
+        System.out.println("Seats after worker ran:");
         printSeats(show);
 
         // Seats are free again — another user can now book them.
@@ -104,6 +115,29 @@ public class Main {
         }
         printSeats(show);
 
-        bookingService.shutdown();
+        worker.stop();
+    }
+
+    /** Payment is declined — booking is cancelled and the held seats are released. */
+    private static void declineDemo() {
+        System.out.println("--- Decline demo: payment always fails, seats must be released ---");
+        // failureRate = 1.0 -> gateway declines every charge, deterministically.
+        BookingService bookingService = new BookingService(new SimulatedPaymentGateway(1.0));
+        Show show = buildShow(bookingService, "show1", 3);
+
+        Booking booking = bookingService.createBooking("unluckyUser", "show1", List.of("ss1", "ss2"));
+        System.out.println("Locked seats, booking " + booking.getId().substring(0, 8)
+                + " -> " + booking.getBookingStatus());
+        printSeats(show);
+
+        try {
+            bookingService.confirmBooking(booking.getId());
+        } catch (PaymentFailedException e) {
+            System.out.println("Confirm failed as expected: " + e.getMessage());
+        }
+
+        System.out.println("Booking status after decline: " + booking.getBookingStatus());
+        System.out.println("Seats after decline (should be AVAILABLE again):");
+        printSeats(show);
     }
 }
