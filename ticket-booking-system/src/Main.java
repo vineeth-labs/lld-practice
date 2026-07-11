@@ -39,7 +39,7 @@ public class Main {
     /** N users race for the SAME two seats — exactly one should win. */
     private static void contentionDemo() throws InterruptedException {
         System.out.println("--- Contention demo: 8 users, same 2 seats ---");
-        BookingService bookingService = new BookingService(new PaymentGateway());
+        BookingService bookingService = new BookingService(new SimulatedPaymentGateway());
         Show show = buildShow(bookingService, "show1", 5);
 
         List<String> contestedSeats = List.of("ss1", "ss2");
@@ -77,7 +77,7 @@ public class Main {
     private static void expiryDemo() throws InterruptedException {
         System.out.println("--- Expiry demo: hold seats, never pay, let sweeper reclaim ---");
         // Short TTL so we don't wait 10 minutes; sweep frequently.
-        BookingService bookingService = new BookingService(new PaymentGateway(), Duration.ofSeconds(1));
+        BookingService bookingService = new BookingService(new SimulatedPaymentGateway(), Duration.ofSeconds(1));
         Show show = buildShow(bookingService, "show1", 3);
         bookingService.startSweeper(Duration.ofMillis(500));
 

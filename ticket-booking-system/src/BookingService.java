@@ -1,4 +1,5 @@
 import model.*;
+import model.exception.*;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -94,7 +95,7 @@ public class BookingService {
 
         LockResult result = lockSeat(userId, showId, seatIds);
         if (!result.success) {
-            throw new RuntimeException("Could not create booking");
+            throw new SeatUnavailableException(result.unavailableSeatIds);
         }
         Booking booking = new Booking(UUID.randomUUID().toString(), userId, showId, result.lockedSeats,
                 BookingStatus.PENDING_PAYMENT,
@@ -105,33 +106,33 @@ public class BookingService {
 
     public Booking confirmBooking(String bookingId) {
         Booking booking = bookings.get(bookingId);
-        if (booking == null) throw new RuntimeException("Booking not found");
+        if (booking == null) throw new BookingNotFoundException(bookingId);
 
         // Per-booking lock: serialize with the sweeper so it can't expire a booking
         // out from under us while payment is in flight.
         synchronized (booking) {
             // idempotency / state guard
             if (booking.getBookingStatus() != BookingStatus.PENDING_PAYMENT)
-                throw new RuntimeException("Booking not payable: " + booking.getBookingStatus());
+                throw new InvalidBookingStateException(booking.getBookingStatus());
 
             // hold window guard — if TTL elapsed, treat as expired
             if (Instant.now().isAfter(booking.getExpiresAt())) {
                 releaseAll(booking);
                 booking.setBookingStatus(BookingStatus.EXPIRED);
-                throw new RuntimeException("Booking hold expired");
+                throw new BookingExpiredException(bookingId);
             }
 
             BigDecimal total = booking.getShowSeats().stream()
                     .map(ShowSeat::getPrice)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            Payment payment = PaymentGateway.makePayment(booking.getUserId(), booking, total);
+            Payment payment = paymentGateway.makePayment(booking.getUserId(), booking, total);
             booking.setPayment(payment);
 
             if (payment.getStatus() != PaymentStatus.SUCCESS) {
                 releaseAll(booking);
                 booking.setBookingStatus(BookingStatus.CANCELLED);
-                throw new RuntimeException("Payment failed");
+                throw new PaymentFailedException("Payment declined", payment);
             }
 
             // LOCKED -> BOOKED for every seat. If any confirm() fails, our lock was lost
@@ -141,7 +142,7 @@ public class BookingService {
                     releaseAll(booking);
                     booking.setBookingStatus(BookingStatus.CANCELLED);
                     // TODO(refund): payment succeeded but seats lost -> paymentGateway.refund(payment)
-                    throw new RuntimeException("Lost seat lock during confirm");
+                    throw new PaymentFailedException("Lost seat lock after charge; refund required", payment);
                 }
             }
 
