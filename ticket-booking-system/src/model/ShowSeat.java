@@ -15,6 +15,13 @@ public class ShowSeat {
     private final AtomicReference<SeatState> status =
         new AtomicReference<>(new SeatState(SeatStatus.AVAILABLE, null, null));
 
+    public ShowSeat(String id, Seat seat, Show show, BigDecimal price) {
+        this.id = id;
+        this.seat = seat;
+        this.show = show;
+        this.price = price;
+    }
+
     /** Atomic AVAILABLE (or expired LOCK) -> LOCKED. Returns false if genuinely taken. */
     public boolean tryLock(String userId, Duration ttl, Instant now) {
         while (true) {
@@ -50,4 +57,5 @@ public class ShowSeat {
     public SeatStatus getStatus() { return status.get().status; }
     public String getId()         { return id; }
     public BigDecimal getPrice()  { return price; }
+    public Seat getSeat()         { return seat; }
 }

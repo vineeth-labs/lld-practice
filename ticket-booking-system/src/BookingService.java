@@ -22,6 +22,16 @@ public class BookingService {
         this.showSeats = new ConcurrentHashMap<>();
     }
 
+    /** Registers a show and indexes its show-seats by seatId for lookup during booking. */
+    public void registerShow(Show show) {
+        shows.put(show.getId(), show);
+        ConcurrentHashMap<String, ShowSeat> seatMap = new ConcurrentHashMap<>();
+        for (ShowSeat showSeat : show.getShowSeats()) {
+            seatMap.put(showSeat.getId(), showSeat);
+        }
+        showSeats.put(show.getId(), seatMap);
+    }
+
     private LockResult lockSeat(String userId, String showId, List<String> seatIds) {
         boolean ok = false;
         List<String> ordered = seatIds.stream().distinct().sorted().toList();
