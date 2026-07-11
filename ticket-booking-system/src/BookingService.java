@@ -5,21 +5,60 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class BookingService {
     Map<String, Show> shows;
     List<Seat> seats;
     Map<String, Booking> bookings;
     ConcurrentHashMap<String, ConcurrentHashMap<String, ShowSeat>> showSeats;
-    private final Duration LOCK_TTL = Duration.ofMinutes(10);
+    private final Duration lockTtl;
 
     private final PaymentGateway paymentGateway;
+    private final ScheduledExecutorService sweeper =
+            Executors.newSingleThreadScheduledExecutor(r -> {
+                Thread t = new Thread(r, "booking-expiry-sweeper");
+                t.setDaemon(true);
+                return t;
+            });
 
     public BookingService(PaymentGateway paymentGateway) {
+        this(paymentGateway, Duration.ofMinutes(10));
+    }
+
+    public BookingService(PaymentGateway paymentGateway, Duration lockTtl) {
         this.paymentGateway = paymentGateway;
+        this.lockTtl = lockTtl;
         this.shows = new ConcurrentHashMap<>();
         this.bookings = new ConcurrentHashMap<>();
         this.showSeats = new ConcurrentHashMap<>();
+    }
+
+    /** Starts the background sweeper that expires stale PENDING_PAYMENT bookings. */
+    public void startSweeper(Duration interval) {
+        long millis = interval.toMillis();
+        sweeper.scheduleAtFixedRate(this::sweepExpired, millis, millis, TimeUnit.MILLISECONDS);
+    }
+
+    /** Releases seat locks for any PENDING_PAYMENT booking whose hold window has elapsed. */
+    void sweepExpired() {
+        Instant now = Instant.now();
+        for (Booking booking : bookings.values()) {
+            // Per-booking lock: never race a confirmBooking that's mid-flight.
+            synchronized (booking) {
+                if (booking.getBookingStatus() == BookingStatus.PENDING_PAYMENT
+                        && now.isAfter(booking.getExpiresAt())) {
+                    releaseAll(booking);
+                    booking.setBookingStatus(BookingStatus.EXPIRED);
+                }
+            }
+        }
+    }
+
+    public void shutdown() {
+        sweeper.shutdownNow();
     }
 
     /** Registers a show and indexes its show-seats by seatId for lookup during booking. */
@@ -39,7 +78,7 @@ public class BookingService {
         try {
             for (String seatId : ordered) {
                 ShowSeat showSeat = showSeats.get(showId).get(seatId);
-                if(!showSeat.tryLock(userId, LOCK_TTL, Instant.now())) {
+                if(!showSeat.tryLock(userId, lockTtl, Instant.now())) {
                     return LockResult.failure(List.of(seatId));
                 }
                 acquired.add(showSeat);
@@ -59,7 +98,7 @@ public class BookingService {
         }
         Booking booking = new Booking(UUID.randomUUID().toString(), userId, showId, result.lockedSeats,
                 BookingStatus.PENDING_PAYMENT,
-                Instant.now(), Instant.now().plus(LOCK_TTL));
+                Instant.now(), Instant.now().plus(lockTtl));
         bookings.put(booking.getId(), booking);
         return booking;
     }
@@ -68,43 +107,47 @@ public class BookingService {
         Booking booking = bookings.get(bookingId);
         if (booking == null) throw new RuntimeException("Booking not found");
 
-        // idempotency / state guard
-        if (booking.getBookingStatus() != BookingStatus.PENDING_PAYMENT)
-            throw new RuntimeException("Booking not payable: " + booking.getBookingStatus());
+        // Per-booking lock: serialize with the sweeper so it can't expire a booking
+        // out from under us while payment is in flight.
+        synchronized (booking) {
+            // idempotency / state guard
+            if (booking.getBookingStatus() != BookingStatus.PENDING_PAYMENT)
+                throw new RuntimeException("Booking not payable: " + booking.getBookingStatus());
 
-        // hold window guard — if TTL elapsed, treat as expired
-        if (Instant.now().isAfter(booking.getExpiresAt())) {
-            releaseAll(booking);
-            booking.setBookingStatus(BookingStatus.CANCELLED);
-            throw new RuntimeException("Booking hold expired");
-        }
+            // hold window guard — if TTL elapsed, treat as expired
+            if (Instant.now().isAfter(booking.getExpiresAt())) {
+                releaseAll(booking);
+                booking.setBookingStatus(BookingStatus.EXPIRED);
+                throw new RuntimeException("Booking hold expired");
+            }
 
-        BigDecimal total = booking.getShowSeats().stream()
-                .map(ShowSeat::getPrice)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            BigDecimal total = booking.getShowSeats().stream()
+                    .map(ShowSeat::getPrice)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        Payment payment = PaymentGateway.makePayment(booking.getUserId(), booking, total);
-        booking.setPayment(payment);
+            Payment payment = PaymentGateway.makePayment(booking.getUserId(), booking, total);
+            booking.setPayment(payment);
 
-        if (payment.getStatus() != PaymentStatus.SUCCESS) {
-            releaseAll(booking);
-            booking.setBookingStatus(BookingStatus.CANCELLED);
-            throw new RuntimeException("Payment failed");
-        }
-
-        // LOCKED -> BOOKED for every seat. If any confirm() fails, our lock was lost
-        // (expired/stolen). Abort: release what we still hold, cancel, flag refund.
-        for (ShowSeat s : booking.getShowSeats()) {
-            if (!s.confirm(booking.getUserId())) {
+            if (payment.getStatus() != PaymentStatus.SUCCESS) {
                 releaseAll(booking);
                 booking.setBookingStatus(BookingStatus.CANCELLED);
-                // TODO(refund): payment succeeded but seats lost -> paymentGateway.refund(payment)
-                throw new RuntimeException("Lost seat lock during confirm");
+                throw new RuntimeException("Payment failed");
             }
-        }
 
-        booking.setBookingStatus(BookingStatus.CONFIRMED);
-        return booking;
+            // LOCKED -> BOOKED for every seat. If any confirm() fails, our lock was lost
+            // (expired/stolen). Abort: release what we still hold, cancel, flag refund.
+            for (ShowSeat s : booking.getShowSeats()) {
+                if (!s.confirm(booking.getUserId())) {
+                    releaseAll(booking);
+                    booking.setBookingStatus(BookingStatus.CANCELLED);
+                    // TODO(refund): payment succeeded but seats lost -> paymentGateway.refund(payment)
+                    throw new RuntimeException("Lost seat lock during confirm");
+                }
+            }
+
+            booking.setBookingStatus(BookingStatus.CONFIRMED);
+            return booking;
+        }
     }
 
     private void releaseAll(Booking booking) {
